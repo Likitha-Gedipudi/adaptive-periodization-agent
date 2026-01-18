@@ -1,0 +1,160 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adaptive-periodization"
+version = "0.1.0"
+description = "Reinforcement learning agent for prescribing daily training recommendations based on physiological recovery metrics"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Adaptive Periodization Team"}
+]
+keywords = ["reinforcement-learning", "fitness", "periodization", "machine-learning", "SAC"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # RL Frameworks
+    "stable-baselines3>=2.2.1",
+    "gymnasium>=0.29.1",
+    
+    # Deep Learning
+    "torch>=2.1.0",
+    
+    # Data Processing
+    "pandas>=2.1.3",
+    "numpy>=1.26.2",
+    "scikit-learn>=1.3.2",
+    "scipy>=1.11.4",
+    
+    # Visualization
+    "matplotlib>=3.8.2",
+    "seaborn>=0.13.0",
+    "plotly>=5.18.0",
+    
+    # Experiment Tracking
+    "tensorboard>=2.15.1",
+    "wandb>=0.16.1",
+    
+    # Hyperparameter Tuning
+    "optuna>=3.5.0",
+    
+    # Utilities
+    "pyyaml>=6.0.1",
+    "tqdm>=4.66.1",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Code Quality
+    "black>=23.12.0",
+    "flake8>=6.1.0",
+    "isort>=5.13.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.6.0",
+    
+    # Testing
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "hypothesis>=6.92.1",
+    
+    # Type Stubs
+    "pandas-stubs>=2.1.0",
+    "types-PyYAML>=6.0.0",
+]
+
+notebook = [
+    "jupyter>=1.0.0",
+    "ipywidgets>=8.1.0",
+    "nbformat>=5.9.0",
+]
+
+[project.scripts]
+ap-train = "src.training.train:main"
+ap-evaluate = "src.evaluation.evaluate:main"
+ap-tune = "src.training.tune:main"
+
+[project.urls]
+Homepage = "https://github.com/adaptive-periodization/adaptive-periodization"
+Documentation = "https://github.com/adaptive-periodization/adaptive-periodization#readme"
+Repository = "https://github.com/adaptive-periodization/adaptive-periodization.git"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | experiments
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["src"]
+skip = [".venv", "experiments"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["experiments/", "notebooks/"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "notebooks/*", "experiments/*"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

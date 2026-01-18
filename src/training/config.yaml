@@ -1,0 +1,69 @@
+# Adaptive Periodization Agent - Training Configuration
+# =====================================================
+
+# SAC Hyperparameters
+sac:
+  learning_rate_actor: 3.0e-4
+  learning_rate_critic: 3.0e-4
+  gamma: 0.99                    # Discount factor (high for long-term rewards)
+  tau: 0.005                     # Soft target update coefficient
+  alpha: 0.2                     # Initial entropy coefficient
+  auto_alpha: true               # Learn alpha automatically
+  batch_size: 256
+  buffer_size: 100000
+  hidden_dims: [256, 128, 64]
+
+# Training Schedule
+training:
+  episodes: 500                  # Total training episodes
+  steps_per_episode: 90          # Days per episode (align with training cycle)
+  warmup_steps: 1000             # Steps before training starts
+  gradient_steps: 1              # Gradient updates per environment step
+  eval_frequency: 50             # Evaluate every N episodes
+  log_frequency: 10              # Log metrics every N episodes
+  checkpoint_frequency: 100      # Save model every N episodes
+
+# Environment Settings
+environment:
+  episode_length: 90             # Days per episode
+  apply_constraints: true        # Enable safety constraints
+  state_features: null           # Use default features (null = STATE_FEATURES)
+
+# Reward Function Weights
+reward:
+  short_weight: 0.2              # Short-term recovery (t+1)
+  medium_weight: 0.3             # Medium-term adaptation (t+14)
+  long_weight: 0.5               # Long-term fitness (t+30)
+  penalty_weight: 1.0            # Overtraining penalty multiplier
+
+# Data Settings
+data:
+  synthetic: true                # Use synthetic data for training
+  n_users: 100                   # Number of synthetic users
+  n_days: 180                    # Days per user
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+# Experiment Settings
+experiment:
+  name: null                     # Experiment name (null = auto-generated)
+  seed: 42                       # Random seed for reproducibility
+  device: "auto"                 # Device: cpu, cuda, mps, or auto
+  output_dir: "./experiments"   
+  log_to_tensorboard: true
+  log_to_wandb: false
+  wandb_project: "adaptive-periodization"
+
+# Early Stopping
+early_stopping:
+  enabled: true
+  patience: 50                   # Episodes without improvement
+  min_delta: 0.01                # Minimum improvement
+  monitor: "mean_reward"         # Metric to monitor
+
+# Evaluation Settings
+evaluation:
+  n_episodes: 10                 # Episodes per evaluation
+  deterministic: false           # Use deterministic policy for eval
+  compare_baselines: true        # Compare with baseline policies
