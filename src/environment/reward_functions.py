@@ -75,20 +75,25 @@ class RecoveryReward(RewardFunction):
         """Calculate short-term recovery reward."""
         reward = 0.0
         
-        # HRV improvement
+        # Base reward for taking any action (scaled up)
+        reward += 5.0
+        
+        # HRV improvement (scaled 10x)
         hrv_current = state.get("hrv", 0)
         hrv_next = next_state.get("hrv", hrv_current)
-        hrv_change = (hrv_next - hrv_current) / max(hrv_current, 1)  # Relative change
-        reward += self.hrv_weight * hrv_change * 10  # Scale to reasonable range
+        hrv_change = (hrv_next - hrv_current) / max(hrv_current, 1)
+        reward += self.hrv_weight * hrv_change * 100  # 10x scaling
         
-        # Recovery maintenance
+        # Recovery maintenance (scaled up)
         recovery_next = next_state.get("recovery", 50)
         if recovery_next >= self.target_recovery:
-            reward += self.recovery_weight * 1.0
+            reward += self.recovery_weight * 10.0  # 10x bonus
+        elif recovery_next >= 50:
+            reward += self.recovery_weight * 5.0  # Moderate recovery bonus
         else:
-            # Penalty proportional to deficit
+            # Smaller penalty for low recovery
             deficit = (self.target_recovery - recovery_next) / self.target_recovery
-            reward -= self.recovery_weight * deficit
+            reward -= self.recovery_weight * deficit * 3.0
         
         return reward
 
@@ -129,27 +134,27 @@ class AdaptationReward(RewardFunction):
         """Calculate medium-term adaptation reward."""
         reward = 0.0
         
-        # CTL growth (positive is good)
+        # Base adaptation reward
+        reward += 3.0
+        
+        # CTL growth (scaled up significantly)
         ctl_current = state.get("ctl", 0)
         ctl_next = next_state.get("ctl", ctl_current)
         ctl_growth = ctl_next - ctl_current
-        reward += self.ctl_weight * ctl_growth * 0.1  # Scale growth
+        reward += self.ctl_weight * ctl_growth * 2.0  # 20x scaling
         
-        # TSB in optimal range
+        # TSB in optimal range (scaled up)
         tsb = next_state.get("tsb", 0)
         min_tsb, max_tsb = self.optimal_tsb_range
         
         if min_tsb <= tsb <= max_tsb:
-            # Optimal range - small bonus
-            reward += self.tsb_weight * 0.5
+            reward += self.tsb_weight * 5.0  # 10x bonus
         elif tsb < min_tsb:
-            # Too fatigued
             penalty = (min_tsb - tsb) / abs(min_tsb)
-            reward -= self.tsb_weight * penalty * 0.5
+            reward -= self.tsb_weight * penalty * 2.0
         else:
-            # Too fresh (not training enough)
             penalty = (tsb - max_tsb) / max_tsb
-            reward -= self.tsb_weight * penalty * 0.3
+            reward -= self.tsb_weight * penalty * 1.5
         
         return reward
 
@@ -186,19 +191,22 @@ class FitnessReward(RewardFunction):
         """Calculate long-term fitness reward."""
         reward = 0.0
         
-        # Fitness proxy improvement (CTL over longer term)
+        # Base fitness reward
+        reward += 2.0
+        
+        # Fitness proxy improvement (scaled up)
         fitness_start = info.get("episode_start_ctl", state.get("ctl", 0))
         fitness_current = next_state.get("ctl", fitness_start)
         fitness_gain = fitness_current - fitness_start
         
-        reward += self.fitness_weight * fitness_gain * 0.05
+        reward += self.fitness_weight * fitness_gain * 0.5  # 10x scaling
         
-        # Consistency bonus (not too many rest days)
+        # Consistency bonus (scaled up)
         action_history = info.get("action_history", [])
         if len(action_history) >= 7:
             recent_rest_days = sum(1 for a in action_history[-7:] if a == 0)
             if 1 <= recent_rest_days <= 2:
-                reward += self.consistency_bonus
+                reward += self.consistency_bonus * 5.0  # 5x bonus
         
         return reward
 
@@ -238,32 +246,32 @@ class OvertrainingPenalty(RewardFunction):
         """Calculate overtraining penalty (returns negative value)."""
         penalty = 0.0
         
-        # HRV crash detection
+        # HRV crash detection (reduced penalty to keep rewards positive)
         hrv = next_state.get("hrv", 60)
         hrv_baseline = state.get("hrv_baseline", hrv)
         hrv_std = state.get("hrv_std", 10)
         
         if hrv < hrv_baseline - 2 * hrv_std:
-            penalty += self.hrv_crash_penalty
+            penalty += self.hrv_crash_penalty * 0.5  # Reduced
         
-        # Sustained low recovery
+        # Sustained low recovery (reduced penalty)
         recovery = next_state.get("recovery", 50)
         if recovery < 33:
-            penalty += self.low_recovery_penalty * (33 - recovery) / 33
+            penalty += self.low_recovery_penalty * (33 - recovery) / 33 * 0.3
         
-        # Too many consecutive hard days
+        # Too many consecutive hard days (reduced penalty)
         action_history = info.get("action_history", [])
         consecutive_hard = 0
         for a in reversed(action_history):
-            if a >= 3:  # Tempo, HIIT, Strength
+            if a >= 3:
                 consecutive_hard += 1
             else:
                 break
         
-        if consecutive_hard > 2:
-            penalty += self.consecutive_intensity_penalty * (consecutive_hard - 2)
+        if consecutive_hard > 3:  # More lenient threshold
+            penalty += self.consecutive_intensity_penalty * (consecutive_hard - 3) * 0.5
         
-        return -penalty  # Return as negative reward
+        return -penalty
 
 
 class CompositeReward(RewardFunction):
